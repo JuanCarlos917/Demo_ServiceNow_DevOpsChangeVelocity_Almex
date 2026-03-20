@@ -102,6 +102,18 @@ jobs:
           tool-id: ${{ secrets.SN_ORCHESTRATION_TOOL_ID }}
           context-github: ${{ toJSON(github) }}
           job-name: "ServiceNow Change Approval"
+          change-request: |
+            {
+              "autoCloseChange": true,
+              "attributes": {
+                "short_description": "Deploy almex-dashboard v1.${{ github.run_number }}.0 to Production",
+                "description": "Automated deployment from GitHub Actions pipeline deploy-almex-dashboard. Commit: ${{ github.sha }}",
+                "implementation_plan": "Rolling update deployment via GitHub Actions",
+                "backout_plan": "Revert to previous version via GitHub Actions re-run",
+                "test_plan": "Automated tests passed in Build and Test stage"
+              }
+            }
+  
 
   deploy-production:
     name: "Deploy to Production"
