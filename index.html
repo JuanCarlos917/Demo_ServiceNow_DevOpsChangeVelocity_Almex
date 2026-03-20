@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Almex — IT Operations Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --deep-navy: #051b2e;
+      --teal-dark: #0a3350;
+      --teal-mid: #0e4a6f;
+      --teal-accent: #1bb5d4;
+      --green-ipsum: #6dc04b;
+      --green-glow: #5bbf3a;
+      --white: #ffffff;
+      --white-soft: rgba(255,255,255,0.85);
+      --white-muted: rgba(255,255,255,0.5);
+      --glass: rgba(255,255,255,0.06);
+      --glass-border: rgba(255,255,255,0.1);
+      --danger: #ff4d6a;
+      --warning: #ffb347;
+      --success: #6dc04b;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--deep-navy);
+      color: var(--white);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .bg-mesh::before {
+      content: '';
+      position: absolute;
+      width: 800px; height: 800px;
+      top: -200px; right: -200px;
+      background: radial-gradient(circle, rgba(27,181,212,0.15) 0%, transparent 70%);
+      animation: drift 20s ease-in-out infinite;
+    }
+    .bg-mesh::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      bottom: -100px; left: -100px;
+      background: radial-gradient(circle, rgba(109,192,75,0.1) 0%, transparent 70%);
+      animation: drift 25s ease-in-out infinite reverse;
+    }
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(50px, -30px) scale(1.1); }
+      66% { transform: translate(-30px, 50px) scale(0.95); }
+    }
+
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(var(--glass-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
+      background-size: 80px 80px;
+      opacity: 0.3;
+      mask-image: radial-gradient(ellipse 60% 60% at 50% 40%, black 20%, transparent 100%);
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 0;
+      background: linear-gradient(135deg, var(--deep-navy) 0%, var(--teal-dark) 50%, var(--teal-mid) 100%);
+      border-bottom: 1px solid var(--glass-border);
+      overflow: hidden;
+    }
+    .header-banner {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      opacity: 0.9;
+    }
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 40px;
+      backdrop-filter: blur(20px);
+      background: rgba(5,27,46,0.7);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-left h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header-left h1 span {
+      color: var(--teal-accent);
+    }
+    .header-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--green-ipsum);
+    }
+    .header-badge .dot {
+      width: 8px; height: 8px;
+      background: var(--green-ipsum);
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(109,192,75,0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(109,192,75,0); }
+    }
+    .header-nav {
+      display: flex;
+      gap: 8px;
+    }
+    .header-nav button {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      color: var(--white-soft);
+      padding: 8px 18px;
+      border-radius: 100px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .header-nav button:hover, .header-nav button.active {
+      background: var(--teal-accent);
+      color: var(--deep-navy);
+      border-color: var(--teal-accent);
+      font-weight: 600;
+    }
+
+    main {
+      position: relative;
+      z-index: 10;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 40px;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .metric-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: card-in 0.6s forwards;
+    }
+    .metric-card:nth-child(1) { animation-delay: 0.1s; }
+    .metric-card:nth-child(2) { animation-delay: 0.2s; }
+    .metric-card:nth-child(3) { animation-delay: 0.3s; }
+    .metric-card:nth-child(4) { animation-delay: 0.4s; }
+    @keyframes card-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .metric-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--teal-accent);
+      box-shadow: 0 20px 60px rgba(27,181,212,0.1);
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .metric-card:nth-child(1)::before { background: var(--teal-accent); }
+    .metric-card:nth-child(2)::before { background: var(--green-ipsum); }
+    .metric-card:nth-child(3)::before { background: var(--warning); }
+    .metric-card:nth-child(4)::before { background: var(--danger); }
+    .metric-label {
+      font-size: 0.78rem;
+      color: var(--white-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+    .metric-value {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .metric-card:nth-child(1) .metric-value { color: var(--teal-accent); }
+    .metric-card:nth-child(2) .metric-value { color: var(--green-ipsum); }
+    .metric-card:nth-child(3) .metric-value { color: var(--warning); }
+    .metric-card:nth-child(4) .metric-value { color: var(--danger); }
+    .metric-change {
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .metric-change.up { color: var(--green-ipsum); }
+    .metric-change.down { color: var(--danger); }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .panel {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 28px;
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: card-in 0.6s 0.5s forwards;
+    }
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .panel-title .icon {
+      width: 32px; height: 32px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .pipeline-list { list-style: none; }
+    .pipeline-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 100px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      transition: background 0.2s;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .pipeline-item:last-child { border-bottom: none; }
+    .pipeline-item:hover { background: var(--glass); }
+    .pipeline-name {
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+    .pipeline-branch {
+      color: var(--white-muted);
+      font-size: 0.78rem;
+    }
+    .pipeline-time {
+      color: var(--white-muted);
+      font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+    .status-badge.success { background: rgba(109,192,75,0.15); color: var(--green-ipsum); }
+    .status-badge.running { background: rgba(27,181,212,0.15); color: var(--teal-accent); animation: pulse-badge 2s infinite; }
+    .status-badge.waiting { background: rgba(255,179,71,0.15); color: var(--warning); }
+    .status-badge.failed { background: rgba(255,77,106,0.15); color: var(--danger); }
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .cr-list { list-style: none; }
+    .cr-item {
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--glass-border);
+      margin-bottom: 12px;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .cr-item:hover {
+      border-color: var(--teal-accent);
+      background: var(--glass);
+    }
+    .cr-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .cr-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--teal-accent);
+      font-weight: 600;
+    }
+    .cr-desc {
+      font-size: 0.82rem;
+      color: var(--white-soft);
+      line-height: 1.4;
+    }
+    .cr-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 0.72rem;
+      color: var(--white-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .activity-feed { margin-top: 24px; }
+    .feed-item {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--glass-border);
+      align-items: flex-start;
+    }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .feed-dot.commit { background: var(--teal-accent); }
+    .feed-dot.deploy { background: var(--green-ipsum); }
+    .feed-dot.change { background: var(--warning); }
+    .feed-dot.alert { background: var(--danger); }
+    .feed-text {
+      font-size: 0.82rem;
+      color: var(--white-soft);
+      line-height: 1.5;
+    }
+    .feed-text strong {
+      color: var(--white);
+    }
+    .feed-time {
+      font-size: 0.7rem;
+      color: var(--white-muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .bottom-bar {
+      position: relative;
+      z-index: 10;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 40px 40px;
+    }
+    .deploy-banner {
+      background: linear-gradient(135deg, var(--teal-dark) 0%, rgba(27,181,212,0.15) 100%);
+      border: 1px solid var(--teal-accent);
+      border-radius: var(--radius);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      opacity: 0;
+      animation: card-in 0.6s 0.8s forwards;
+    }
+    .deploy-info h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .deploy-info p {
+      font-size: 0.82rem;
+      color: var(--white-muted);
+    }
+    .deploy-btn {
+      background: var(--green-ipsum);
+      color: var(--deep-navy);
+      border: none;
+      padding: 12px 32px;
+      border-radius: 100px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 0.02em;
+    }
+    .deploy-btn:hover {
+      background: var(--white);
+      transform: scale(1.05);
+      box-shadow: 0 8px 30px rgba(109,192,75,0.3);
+    }
+
+    footer {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 20px 40px 30px;
+      font-size: 0.72rem;
+      color: var(--white-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    @media (max-width: 1024px) {
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      main, .bottom-bar { padding-left: 20px; padding-right: 20px; }
+      .header-content { padding: 12px 20px; }
+    }
+    @media (max-width: 640px) {
+      .metrics-row { grid-template-columns: 1fr; }
+      .metric-value { font-size: 2rem; }
+      .header-nav { display: none; }
+      .pipeline-item { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .pipeline-branch, .pipeline-time { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+
+  <header>
+    <img src="assets/banner.png" alt="Ipsum Technology — ServiceNow Elite Partner" class="header-banner">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>Almex <span>· IT Operations</span></h1>
+        <div class="header-badge">
+          <div class="dot"></div>
+          DevOps Change Velocity
+        </div>
+      </div>
+      <nav class="header-nav">
+        <button class="active">Dashboard</button>
+        <button>Pipelines</button>
+        <button>Changes</button>
+        <button>Insights</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Deployment Frequency</div>
+        <div class="metric-value" id="deploy-freq">12.4</div>
+        <div class="metric-change up">↑ 23% <span style="color:var(--white-muted); margin-left:4px">vs last month</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Lead Time for Changes</div>
+        <div class="metric-value" id="lead-time">2.1h</div>
+        <div class="metric-change up">↑ 18% faster</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Change Failure Rate</div>
+        <div class="metric-value" id="cfr">4.2%</div>
+        <div class="metric-change up">↑ Improved from 8.7%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Mean Time to Restore</div>
+        <div class="metric-value" id="mttr">18m</div>
+        <div class="metric-change down">↓ 3m slower than target</div>
+      </div>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-title">
+          <div class="icon">⚡</div>
+          Pipeline Executions
+        </div>
+        <ul class="pipeline-list">
+          <li class="pipeline-item">
+            <span class="pipeline-name">deploy-prod-api</span>
+            <span class="pipeline-branch">main</span>
+            <span class="pipeline-time">2m 34s</span>
+            <span class="status-badge running">Running</span>
+          </li>
+          <li class="pipeline-item">
+            <span class="pipeline-name">build-frontend-v3</span>
+            <span class="pipeline-branch">feature/ui-v3</span>
+            <span class="pipeline-time">1m 12s</span>
+            <span class="status-badge waiting">CR Pending</span>
+          </li>
+          <li class="pipeline-item">
+            <span class="pipeline-name">deploy-staging-api</span>
+            <span class="pipeline-branch">develop</span>
+            <span class="pipeline-time">3m 08s</span>
+            <span class="status-badge success">Deployed</span>
+          </li>
+          <li class="pipeline-item">
+            <span class="pipeline-name">test-integration</span>
+            <span class="pipeline-branch">main</span>
+            <span class="pipeline-time">5m 47s</span>
+            <span class="status-badge success">Passed</span>
+          </li>
+          <li class="pipeline-item">
+            <span class="pipeline-name">deploy-prod-worker</span>
+            <span class="pipeline-branch">hotfix/memory</span>
+            <span class="pipeline-time">0m 58s</span>
+            <span class="status-badge failed">Failed</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <div class="icon">📋</div>
+          Change Requests — ServiceNow
+        </div>
+        <ul class="cr-list">
+          <li class="cr-item">
+            <div class="cr-header">
+              <span class="cr-id">CHG0041892</span>
+              <span class="status-badge waiting">Awaiting Approval</span>
+            </div>
+            <div class="cr-desc">Production deploy: API v3.2.1 — Payment module refactor</div>
+            <div class="cr-meta">
+              <span>🏗️ deploy-prod-api</span>
+              <span>👤 jcarlos</span>
+              <span>⏱️ 4 min ago</span>
+            </div>
+          </li>
+          <li class="cr-item">
+            <div class="cr-header">
+              <span class="cr-id">CHG0041891</span>
+              <span class="status-badge success">Auto-Approved</span>
+            </div>
+            <div class="cr-desc">Staging deploy: Frontend v3.0.0-rc1 — New dashboard UI</div>
+            <div class="cr-meta">
+              <span>🏗️ build-frontend-v3</span>
+              <span>👤 alexbv</span>
+              <span>⏱️ 22 min ago</span>
+            </div>
+          </li>
+          <li class="cr-item">
+            <div class="cr-header">
+              <span class="cr-id">CHG0041890</span>
+              <span class="status-badge success">Implemented</span>
+            </div>
+            <div class="cr-desc">Standard change: DB migration — Add indexes to orders table</div>
+            <div class="cr-meta">
+              <span>🏗️ deploy-staging-api</span>
+              <span>👤 jcarlos</span>
+              <span>⏱️ 1h ago</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel" style="animation-delay: 0.7s;">
+      <div class="panel-title">
+        <div class="icon">📡</div>
+        Live Activity Feed
+      </div>
+      <div class="activity-feed" id="activity-feed">
+        <div class="feed-item">
+          <div class="feed-dot change"></div>
+          <div>
+            <div class="feed-text"><strong>CHG0041892</strong> — Change Request created automatically from pipeline <strong>deploy-prod-api</strong>. Awaiting CAB approval.</div>
+            <div class="feed-time">4 min ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot deploy"></div>
+          <div>
+            <div class="feed-text"><strong>deploy-staging-api</strong> completed successfully on <strong>develop</strong> branch. Change Request CHG0041890 moved to <strong>Implemented</strong>.</div>
+            <div class="feed-time">18 min ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot commit"></div>
+          <div>
+            <div class="feed-text"><strong>jcarlos</strong> pushed 3 commits to <strong>main</strong> — "refactor: payment module error handling"</div>
+            <div class="feed-time">32 min ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot alert"></div>
+          <div>
+            <div class="feed-text"><strong>deploy-prod-worker</strong> failed on step <strong>health-check</strong>. Memory threshold exceeded. Auto-rollback initiated.</div>
+            <div class="feed-time">45 min ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot deploy"></div>
+          <div>
+            <div class="feed-text">Change Acceleration Policy <strong>CAP-LOW-RISK</strong> auto-approved CHG0041891 — all quality gates passed (coverage: 94%, 0 critical vulns).</div>
+            <div class="feed-time">1h ago</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="bottom-bar">
+    <div class="deploy-banner">
+      <div class="deploy-info">
+        <h3>🚀 Pipeline Paused — Awaiting ServiceNow Approval</h3>
+        <p>CHG0041892 needs approval before <strong>deploy-prod-api</strong> can continue to production.</p>
+      </div>
+      <button class="deploy-btn" onclick="simulateApproval()">Simulate Approval</button>
+    </div>
+  </div>
+
+  <footer>
+    Powered by <strong>ServiceNow DevOps Change Velocity</strong> × <strong>GitHub Actions</strong> — Demo by Ipsum Technology
+  </footer>
+
+  <script>
+    function simulateApproval() {
+      const btn = document.querySelector('.deploy-btn');
+      const banner = document.querySelector('.deploy-banner');
+      const feed = document.getElementById('activity-feed');
+
+      btn.textContent = 'Approving...';
+      btn.style.background = 'var(--warning)';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.textContent = '✓ Approved — Deploying';
+        btn.style.background = 'var(--teal-accent)';
+
+        const runningBadge = document.querySelector('.status-badge.running');
+        if (runningBadge) {
+          runningBadge.textContent = 'Deploying';
+          runningBadge.className = 'status-badge running';
+        }
+
+        const waitingCR = document.querySelector('.cr-list .status-badge.waiting');
+        if (waitingCR) {
+          waitingCR.textContent = 'Approved';
+          waitingCR.className = 'status-badge success';
+        }
+
+        const newFeed = document.createElement('div');
+        newFeed.className = 'feed-item';
+        newFeed.innerHTML = `
+          <div class="feed-dot deploy"></div>
+          <div>
+            <div class="feed-text"><strong>CHG0041892</strong> — Change Request <strong>approved</strong> by Change Manager. Pipeline <strong>deploy-prod-api</strong> resuming deployment to production.</div>
+            <div class="feed-time">just now</div>
+          </div>
+        `;
+        newFeed.style.opacity = '0';
+        newFeed.style.transform = 'translateX(-20px)';
+        feed.insertBefore(newFeed, feed.firstChild);
+        requestAnimationFrame(() => {
+          newFeed.style.transition = 'all 0.5s ease';
+          newFeed.style.opacity = '1';
+          newFeed.style.transform = 'translateX(0)';
+        });
+      }, 2000);
+
+      setTimeout(() => {
+        btn.textContent = '✓ Deployed to Production';
+        btn.style.background = 'var(--green-ipsum)';
+        banner.style.borderColor = 'var(--green-ipsum)';
+
+        const runningBadge = document.querySelector('.status-badge.running');
+        if (runningBadge) {
+          runningBadge.textContent = 'Deployed';
+          runningBadge.className = 'status-badge success';
+        }
+
+        document.getElementById('deploy-freq').textContent = '12.6';
+
+        const finalFeed = document.createElement('div');
+        finalFeed.className = 'feed-item';
+        finalFeed.innerHTML = `
+          <div class="feed-dot deploy"></div>
+          <div>
+            <div class="feed-text">🎉 <strong>deploy-prod-api</strong> deployed successfully to production. CHG0041892 status → <strong>Implemented</strong>. DORA metrics updated.</div>
+            <div class="feed-time">just now</div>
+          </div>
+        `;
+        finalFeed.style.opacity = '0';
+        finalFeed.style.transform = 'translateX(-20px)';
+        feed.insertBefore(finalFeed, feed.firstChild);
+        requestAnimationFrame(() => {
+          finalFeed.style.transition = 'all 0.5s ease';
+          finalFeed.style.opacity = '1';
+          finalFeed.style.transform = 'translateX(0)';
+        });
+      }, 5000);
+    }
+
+    function animateValue(el, start, end, suffix, duration) {
+      const startTime = performance.now();
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = start + (end - start) * eased;
+        el.textContent = current.toFixed(1) + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        animateValue(document.getElementById('deploy-freq'), 0, 12.4, '', 1200);
+      }, 400);
+      setTimeout(() => {
+        const el = document.getElementById('lead-time');
+        animateValue(el, 0, 2.1, 'h', 1000);
+      }, 600);
+      setTimeout(() => {
+        const el = document.getElementById('cfr');
+        animateValue(el, 0, 4.2, '%', 1000);
+      }, 800);
+    });
+  </script>
+</body>
+</html>
